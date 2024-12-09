@@ -1,0 +1,36 @@
+[
+    {
+        "date": "02.12.2024 | 23:36",
+        "game_name": "Март",
+        "number_players": 2,
+        "player1": [
+            "@VeIDone ПапаРимский",
+            10
+        ],
+        "player2": [
+            "@Swchn ПапаДублинский",
+            12
+        ],
+        "rules": "20м",
+        "party": "2ч"
+    },
+    {
+        "date": "02.12.2024 | 23:41",
+        "game_name": "пар",
+        "number_players": 3,
+        "player1": [
+            "@Fjfjfjjfefefef попоопопопоопопопвававававава",
+            3
+        ],
+        "player2": [
+            "@dfdfefefegefefefefefefef пвмпоиткпткгмкмгкпгкгпргкпргкрпгкпгркпр",
+            4
+        ],
+        "player3": [
+            "@rrfrf павпкп",
+            2
+        ],
+        "rules": "0",
+        "party": "50м"
+    }
+]
