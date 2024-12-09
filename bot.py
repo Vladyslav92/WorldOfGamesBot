@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 from base.base import to_base, read_json_file
 
-TOKEN = '7768320954:AAEdxXVAVZ-OqtqKF0sPsW5B7uXQ9DZmJPY'
+TOKEN = ''
 bot = telebot.TeleBot(TOKEN)
 GAME_INFO = []
 base = []
