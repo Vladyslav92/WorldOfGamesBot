@@ -32,5 +32,24 @@
         ],
         "rules": "0",
         "party": "50м"
+    },
+    {
+        "date": "21.08.2025 | 16:51",
+        "game_name": "TestGame",
+        "number_players": 3,
+        "player1": [
+            "@player1 Player1Nick",
+            10
+        ],
+        "player2": [
+            "@player2 Player2Nick",
+            15
+        ],
+        "player3": [
+            "@player3 Player3Nick",
+            20
+        ],
+        "rules": "30м",
+        "party": "1ч"
     }
 ]

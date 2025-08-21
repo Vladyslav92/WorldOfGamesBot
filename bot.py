@@ -1,4 +1,5 @@
 import telebot
+import re
 from telebot import types
 from base.base import to_base, read_json_file
 
@@ -47,17 +48,26 @@ def games_onweek_button(message):
     bot.send_message(message.chat.id, "📂 Пока нет доступных игр")
 
 
-# ЭТА ФУНКЦИЯ В БУДУЩЕМ БУДЕТ ПЕРЕПИСАНА И УСЛОЖНЕНА
 @bot.message_handler(func=lambda message: message.text == "📂 Создать игру")
 def create_game_button(message):
     empty_markup = types.ReplyKeyboardRemove()
-    bot.send_message(message.chat.id, "🕖 Ожидайте", reply_markup=empty_markup)
+    bot.send_message(message.chat.id, "🎮 Введите название игры (например: 'NewGame'):", reply_markup=empty_markup)
+    bot.register_next_step_handler(message, handle_game_name_from_create_game)
 
-    markup = types.InlineKeyboardMarkup()
-    CancelButton = types.InlineKeyboardButton("❌ Отменить", callback_data='cancel')
-    markup.add(CancelButton)
 
-    bot.send_message(message.chat.id, "🎮 Введите название игры:", reply_markup=markup)
+def handle_game_name_from_create_game(message):
+    game_name = message.text.strip()
+    if not game_name:
+        bot.send_message(message.chat.id, "❌ Название игры не может быть пустым. Попробуйте снова:")
+        bot.register_next_step_handler(message, handle_game_name_from_create_game)
+        return
+
+    # Инициализируем создание отчёта с уже введённым названием
+    global GAME_INFO, base
+    GAME_INFO = [game_name]
+    base = []
+    bot.send_message(message.chat.id, "👥 Введите количество игроков (например: '3'):")
+    bot.register_next_step_handler(message, get_number_of_players)
 
 
 @bot.message_handler(func=lambda message: message.text == "🎲 Мои участия")
@@ -77,60 +87,134 @@ def participation_button(message):
 
 @bot.message_handler(func=lambda message: message.text == "📂 Создать отчет")
 def create_report(message):
-    global GAME_INFO
-    bot.send_message(message.chat.id, "Введите название игры:")
+    global GAME_INFO, base
+    GAME_INFO = []
+    base = []
+    bot.send_message(message.chat.id, "🎮 Введите название игры (например: 'GameName'):")
     bot.register_next_step_handler(message, get_game_name)
 
 
 def get_game_name(message):
-    global GAME_INFO
-    GAME_INFO.append(message.text)
-    bot.send_message(message.chat.id, "Количество игроков:")
+    game_name = message.text.strip()
+    if not game_name:
+        bot.send_message(message.chat.id, "❌ Название игры не может быть пустым. Попробуйте снова:")
+        bot.register_next_step_handler(message, get_game_name)
+        return
+    GAME_INFO.append(game_name)
+    bot.send_message(message.chat.id, "👥 Введите количество игроков (например: '3'):")
     bot.register_next_step_handler(message, get_number_of_players)
 
 
 def get_number_of_players(message):
-    global GAME_INFO
-    num_players = int(message.text)
+    text = message.text.strip()
+    match = re.search(r'\d+', text)
+    if not match:
+        bot.send_message(message.chat.id, "❌ Введите хотя бы одно число. Попробуйте снова:")
+        bot.register_next_step_handler(message, get_number_of_players)
+        return
+    num_players = int(match.group())
     GAME_INFO.append(num_players)
     bot.send_message(message.chat.id,
-                     f"Введите адрес, ник 1-го персонажа и сколько очков он/она набрал:")
+                     f"👤 Введите данные игрока 1 в формате: '@ник Имя 10'\n(где 10 — очки):")
     bot.register_next_step_handler(message, get_player_info, 1, num_players)
 
 
 def get_player_info(message, player, num_players):
-    global GAME_INFO, base
-    spliting = (f'{message.text.split()[0]} {message.text.split()[1]}', int(message.text.split()[-1]))
-    base.append(spliting)
-    player += 1
-    if player > num_players:
+    global base
+    text = message.text.strip()
+    parts = text.split()
+
+    if len(parts) != 3 or not parts[0].startswith('@') or not parts[2].isdigit() or ' ' in parts[1]:
+        bot.send_message(message.chat.id,
+                         f"❌ Неверный формат. Введите данные игрока {player} в формате: '@ник Имя 10'")
+        bot.register_next_step_handler(message, get_player_info, player, num_players)
+        return
+
+    username = parts[0]
+    nickname = parts[1]
+    score = int(parts[2])
+    base.append((f"{username} {nickname}", score))
+
+    if player >= num_players:
         GAME_INFO.append(base)
-        bot.send_message(message.chat.id, "Введите, какими были правила\n(Например: 20м):")
+        bot.send_message(message.chat.id, "📜 Введите правила игры (например: '20м' или '2ч' или '2ч 15м'):")
         bot.register_next_step_handler(message, get_rules)
     else:
         bot.send_message(message.chat.id,
-                         f"Введите адрес, ник {player}-го персонажа и сколько очков он/она набрал:")
-        bot.register_next_step_handler(message, get_player_info, player, num_players)
+                         f"👤 Введите данные игрока {player + 1} в формате: '@ник Имя 10'")
+        bot.register_next_step_handler(message, get_player_info, player + 1, num_players)
 
 
 def get_rules(message):
-    global GAME_INFO
-    GAME_INFO.append(message.text)
-    bot.send_message(message.chat.id, "Сколько длилась партия\n(Например 2ч 15м):")
+    text = message.text.strip()
+
+    # Проверка на допустимые форматы: "20м", "2ч", "1ч 30м"
+    pattern = r'^((\d{1,2}ч)?\s?(\d{1,2}м)?)$'
+    match = re.match(pattern, text)
+
+    if not match:
+        bot.send_message(message.chat.id,
+                         "❌ Неверный формат. Примеры: '20м', '2ч', '1ч 30м'")
+        bot.register_next_step_handler(message, get_rules)
+        return
+
+    # Проверка диапазонов
+    hours_match = re.search(r'(\d{1,2})ч', text)
+    minutes_match = re.search(r'(\d{1,2})м', text)
+
+    if hours_match:
+        hours = int(hours_match.group(1))
+        if not (1 <= hours <= 24):
+            bot.send_message(message.chat.id, "❌ Часы должны быть от 1 до 24. Попробуйте снова:")
+            bot.register_next_step_handler(message, get_rules)
+            return
+
+    if minutes_match:
+        minutes = int(minutes_match.group(1))
+        if not (1 <= minutes <= 60):
+            bot.send_message(message.chat.id, "❌ Минуты должны быть от 1 до 60. Попробуйте снова:")
+            bot.register_next_step_handler(message, get_rules)
+            return
+
+    GAME_INFO.append(text)
+    bot.send_message(message.chat.id,
+                     "⏳ Введите длительность партии (например: '2ч 15м', '2ч', или '45м'):")
     bot.register_next_step_handler(message, get_to_base)
 
 
 def get_to_base(message):
-    global GAME_INFO, base
-    GAME_INFO.append(message.text)
+    text = message.text.strip()
+    pattern = r'^((\d{1,2}ч)?\s?(\d{1,2}м)?)$'
+    match = re.match(pattern, text)
+
+    if not match:
+        bot.send_message(message.chat.id,
+                         "❌ Неверный формат. Примеры: '2ч 15м', '2ч', '45м'")
+        bot.register_next_step_handler(message, get_to_base)
+        return
+
+    # Проверка диапазонов
+    hours_match = re.search(r'(\d{1,2})ч', text)
+    minutes_match = re.search(r'(\d{1,2})м', text)
+
+    if hours_match:
+        hours = int(hours_match.group(1))
+        if not (1 <= hours <= 24):
+            bot.send_message(message.chat.id, "❌ Часы должны быть от 1 до 24. Попробуйте снова:")
+            bot.register_next_step_handler(message, get_to_base)
+            return
+
+    if minutes_match:
+        minutes = int(minutes_match.group(1))
+        if not (1 <= minutes <= 60):
+            bot.send_message(message.chat.id, "❌ Минуты должны быть от 1 до 60. Попробуйте снова:")
+            bot.register_next_step_handler(message, get_to_base)
+            return
+
+    GAME_INFO.append(text)
     to_base(GAME_INFO)
-    bot.send_message(message.chat.id, "Отчет сохранен в базе")
-
-    # Возвращаем пользователя к главному меню
+    bot.send_message(message.chat.id, "✅ Отчет сохранен в базе данных.")
     send_welcome(message)
-
-    GAME_INFO = []
-    base = []
 
 
 @bot.message_handler(func=lambda message: message.text == "📂 Посмотреть отчеты")
