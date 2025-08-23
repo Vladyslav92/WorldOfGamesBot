@@ -3,7 +3,7 @@ import re
 from telebot import types
 from base.base import to_base, read_json_file
 
-TOKEN = ''
+TOKEN = '7768320954:AAEdxXVAVZ-OqtqKF0sPsW5B7uXQ9DZmJPY'
 bot = telebot.TeleBot(TOKEN)
 GAME_INFO = []
 base = []
@@ -51,23 +51,13 @@ def games_onweek_button(message):
 @bot.message_handler(func=lambda message: message.text == "📂 Создать игру")
 def create_game_button(message):
     empty_markup = types.ReplyKeyboardRemove()
-    bot.send_message(message.chat.id, "🎮 Введите название игры (например: 'NewGame'):", reply_markup=empty_markup)
-    bot.register_next_step_handler(message, handle_game_name_from_create_game)
+    bot.send_message(message.chat.id, "🕖 Ожидайте", reply_markup=empty_markup)
 
+    markup = types.InlineKeyboardMarkup()
+    CancelButton = types.InlineKeyboardButton("❌ Отменить", callback_data='cancel')
+    markup.add(CancelButton)
 
-def handle_game_name_from_create_game(message):
-    game_name = message.text.strip()
-    if not game_name:
-        bot.send_message(message.chat.id, "❌ Название игры не может быть пустым. Попробуйте снова:")
-        bot.register_next_step_handler(message, handle_game_name_from_create_game)
-        return
-
-    # Инициализируем создание отчёта с уже введённым названием
-    global GAME_INFO, base
-    GAME_INFO = [game_name]
-    base = []
-    bot.send_message(message.chat.id, "👥 Введите количество игроков (например: '3'):")
-    bot.register_next_step_handler(message, get_number_of_players)
+    bot.send_message(message.chat.id, "🎮 Введите название игры:", reply_markup=markup)
 
 
 @bot.message_handler(func=lambda message: message.text == "🎲 Мои участия")
