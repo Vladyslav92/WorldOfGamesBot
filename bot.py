@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 from base.base import read_json_file
 from handlers.report_creator import create_report
-
+from handlers.game_creator import create_game, user_sessions, show_summary
 
 with open("TOKEN.txt", "r") as f:
     TOKEN = f.read().strip()
@@ -53,14 +53,15 @@ def games_onweek_button(message):
 
 @bot.message_handler(func=lambda message: message.text == "📂 Создать игру")
 def create_game_button(message):
-    empty_markup = types.ReplyKeyboardRemove()
-    bot.send_message(message.chat.id, "🕖 Ожидайте", reply_markup=empty_markup)
+    create_game(bot, message)
 
-    markup = types.InlineKeyboardMarkup()
-    CancelButton = types.InlineKeyboardButton("❌ Отменить", callback_data='cancel')
-    markup.add(CancelButton)
 
-    bot.send_message(message.chat.id, "🎮 Введите название игры:", reply_markup=markup)
+@bot.callback_query_handler(func=lambda call: call.data == "skip_comment")
+def handle_skip_comment(call):
+    chat_id = call.message.chat.id
+    user_sessions[chat_id]["comment"] = ""
+    bot.answer_callback_query(call.id, "Комментарий пропущен")
+    show_summary(bot, chat_id)
 
 
 @bot.message_handler(func=lambda message: message.text == "🎲 Мои участия")
