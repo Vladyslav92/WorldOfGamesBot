@@ -156,7 +156,6 @@ def show_summary(bot, chat_id):
         "October": "октября", "November": "ноября", "December": "декабря"
     }
 
-    # Форматируем дату с русским месяцем
     date_str = date_obj.strftime("%d %B %Y")
     for en, ru in months_ru.items():
         date_str = date_str.replace(en, ru)
@@ -175,38 +174,10 @@ def show_summary(bot, chat_id):
 
     bot.send_message(chat_id, summary)
 
-    # Сохраняем игру в файл
-    game_entry = {
-        "game_name": data["game_name"],
-        "date": date_obj.strftime("%d.%m.%Y"),
-        "weekday": weekday_ru.get(weekday, weekday),
-        "time": data["time"].strftime("%H:%M"),
-        "training": data["training"],
-        "party": data["party"],
-        "players": int(data["players"]),
-        "reserve": int(data["reserve"]),
-        "comment": data["comment"] if data["comment"] else ""
-    }
+    # Кнопки "Опубликовать" и "Отмена"
+    markup = types.InlineKeyboardMarkup()
+    publish_btn = types.InlineKeyboardButton("✅ Опубликовать", callback_data="publish_game")
+    cancel_btn = types.InlineKeyboardButton("❌ Отмена", callback_data="cancel_game")
+    markup.add(publish_btn, cancel_btn)
 
-    try:
-        with open(GAMES_PATH, "r", encoding="utf-8") as f:
-            games = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        games = {}
-
-    games[data["game_name"]] = game_entry
-
-    with open(GAMES_PATH, "w", encoding="utf-8") as f:
-        json.dump(games, f, ensure_ascii=False, indent=4)
-
-    del user_sessions[chat_id]
-
-    # Подтверждение и возврат в меню
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(
-        types.KeyboardButton("📂 Создать игру"),
-        types.KeyboardButton("📂 Игры на неделе"),
-        types.KeyboardButton("👤 Профиль"),
-        types.KeyboardButton("📃 Инфо")
-    )
-    bot.send_message(chat_id, "✅ Игра успешно создана и сохранена!", reply_markup=markup)
+    bot.send_message(chat_id, "Выберите действие:", reply_markup=markup)
