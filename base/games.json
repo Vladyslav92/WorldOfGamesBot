@@ -1,0 +1,24 @@
+{
+    "TestGame": {
+        "game_name": "TestGame",
+        "date": "26.08.2025",
+        "weekday": "Вторник",
+        "time": "17:00",
+        "training": "1ч 35м",
+        "party": "3ч 33м",
+        "players": 5,
+        "reserve": 0,
+        "comment": "Тестовый коммент"
+    },
+    "Еще Тест": {
+        "game_name": "Еще Тест",
+        "date": "27.08.2025",
+        "weekday": "Среда",
+        "time": "10:00",
+        "training": "30м",
+        "party": "1ч 10м",
+        "players": 2,
+        "reserve": 0,
+        "comment": ""
+    }
+}

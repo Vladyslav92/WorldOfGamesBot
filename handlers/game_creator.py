@@ -141,14 +141,29 @@ def show_summary(bot, chat_id):
     data = user_sessions[chat_id]
     date_obj = data["date"]
     weekday = date_obj.strftime("%A")
+
+    # Перевод дня недели
     weekday_ru = {
         "Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда",
         "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"
     }
 
+    # Перевод месяца
+    months_ru = {
+        "January": "января", "February": "февраля", "March": "марта",
+        "April": "апреля", "May": "мая", "June": "июня",
+        "July": "июля", "August": "августа", "September": "сентября",
+        "October": "октября", "November": "ноября", "December": "декабря"
+    }
+
+    # Форматируем дату с русским месяцем
+    date_str = date_obj.strftime("%d %B %Y")
+    for en, ru in months_ru.items():
+        date_str = date_str.replace(en, ru)
+
     summary = (
         f"🎲 {data['game_name']}\n\n"
-        f"🗓 {date_obj.strftime('%d %B %Y')}\n"
+        f"🗓 {date_str}\n"
         f"🗓 {weekday_ru.get(weekday, weekday)}\n"
         f"🕓 {data['time'].strftime('%H:%M')}\n\n"
         f"👤 Игроков: {data['players']}\n"
@@ -163,7 +178,7 @@ def show_summary(bot, chat_id):
     # Сохраняем игру в файл
     game_entry = {
         "game_name": data["game_name"],
-        "date": data["date"].strftime("%d.%m.%Y"),
+        "date": date_obj.strftime("%d.%m.%Y"),
         "weekday": weekday_ru.get(weekday, weekday),
         "time": data["time"].strftime("%H:%M"),
         "training": data["training"],
