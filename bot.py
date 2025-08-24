@@ -1,10 +1,8 @@
-import json
-
 import telebot
 from telebot import types
 from base.base import read_json_file
 from handlers.report_creator import create_report
-from handlers.game_creator import create_game, user_sessions, show_summary, GAMES_PATH
+from handlers.game_creator import create_game, register_game_handlers
 
 with open("TOKEN.txt", "r") as f:
     TOKEN = f.read().strip()
@@ -14,10 +12,12 @@ GAME_INFO = []
 base = []
 
 
-# Функция обработки команды start
 @bot.message_handler(commands=['start'])
-def send_welcome(message):
-    # Создаем основное меню с одной кнопкой
+def start_command(message):
+    send_welcome(bot, message)
+
+
+def send_welcome(bot, message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     CreateGameButton = types.KeyboardButton("📂 Создать игру")
     GamesOnWeekButton = types.KeyboardButton("📂 Игры на неделе")
@@ -26,8 +26,10 @@ def send_welcome(message):
     markup.add(CreateGameButton, GamesOnWeekButton)
     markup.add(ProfileButton, InfoButton)
 
-    # Отправляем сообщение с кнопкой "Старт"
     bot.send_message(message.chat.id, "Главное меню:", reply_markup=markup)
+
+
+register_game_handlers(bot, send_welcome)
 
 
 @bot.message_handler(func=lambda message: message.text == "📃 Инфо")
@@ -56,61 +58,6 @@ def games_onweek_button(message):
 @bot.message_handler(func=lambda message: message.text == "📂 Создать игру")
 def create_game_button(message):
     create_game(bot, message)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == "skip_comment")
-def handle_skip_comment(call):
-    chat_id = call.message.chat.id
-    user_sessions[chat_id]["comment"] = ""
-    bot.answer_callback_query(call.id, "Комментарий пропущен")
-    show_summary(bot, chat_id)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == "publish_game")
-def handle_publish(call):
-    chat_id = call.message.chat.id
-    data = user_sessions.get(chat_id)
-
-    if not data:
-        bot.send_message(chat_id, "❌ Ошибка: данные не найдены.")
-        return
-
-    # Сохраняем игру в файл
-    game_entry = {
-        "game_name": data["game_name"],
-        "date": data["date"].strftime("%d.%m.%Y"),
-        "weekday": data["date"].strftime("%A"),
-        "time": data["time"].strftime("%H:%M"),
-        "training": data["training"],
-        "party": data["party"],
-        "players": int(data["players"]),
-        "reserve": int(data["reserve"]),
-        "comment": data["comment"] if data["comment"] else ""
-    }
-
-    try:
-        with open(GAMES_PATH, "r", encoding="utf-8") as f:
-            games = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        games = {}
-
-    games[data["game_name"]] = game_entry
-
-    with open(GAMES_PATH, "w", encoding="utf-8") as f:
-        json.dump(games, f, ensure_ascii=False, indent=4)
-
-    del user_sessions[chat_id]
-
-    bot.answer_callback_query(call.id, "✅ Игра опубликована!")
-    send_welcome(call.message)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == "cancel_game")
-def handle_cancel(call):
-    chat_id = call.message.chat.id
-    user_sessions.pop(chat_id, None)
-    bot.answer_callback_query(call.id, "❌ Создание игры отменено.")
-    send_welcome(call.message)
 
 
 @bot.message_handler(func=lambda message: message.text == "🎲 Мои участия")
@@ -174,7 +121,7 @@ def find_friends_operation(call):
 
 @bot.message_handler(func=lambda message: message.text == "📂 Вернуться в меню")
 def return_to_menu(message):
-    send_welcome(message)
+    send_welcome(bot, message)
 
 
 # Обработка нажатия кнопки "Отменить"

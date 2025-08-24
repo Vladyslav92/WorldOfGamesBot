@@ -113,21 +113,18 @@ def get_number(bot, message, key):
         markup = types.InlineKeyboardMarkup()
         skip_button = types.InlineKeyboardButton("💳 Пропустить", callback_data="skip_comment")
         markup.add(skip_button)
-
-        bot.send_message(chat_id, "🎲 Введите свой комментарий:", reply_markup=markup)
-
-        # Регистрируем обработку текстового комментария
-        bot.register_next_step_handler(message, lambda msg: handle_text_comment(bot, msg))
+        bot.send_message(chat_id, "🎲 Введите свой комментарий или нажмите кнопку ниже:", reply_markup=markup)
+        bot.register_next_step_handler_by_chat_id(chat_id, lambda msg: handle_text_comment(bot, msg))
 
 
 def handle_text_comment(bot, message):
     chat_id = message.chat.id
-    comment = message.text.strip()
+    # Если пользователь всё-таки ввёл текст — сохраняем
+    if chat_id not in user_sessions:
+        user_sessions[chat_id] = {}
 
-    # Проверяем, что пользователь не нажал кнопку "Пропустить"
-    if comment != "💳 Пропустить":
-        user_sessions[chat_id]["comment"] = comment
-        show_summary(bot, chat_id)
+    user_sessions[chat_id]["comment"] = message.text.strip()
+    show_summary(bot, chat_id)
 
 
 def get_comment(bot, message):
@@ -138,17 +135,22 @@ def get_comment(bot, message):
 
 
 def show_summary(bot, chat_id):
-    data = user_sessions[chat_id]
+    data = user_sessions.get(chat_id, {})
+    required_fields = ["game_name", "date", "time", "players", "reserve", "training", "party"]
+
+    missing = [field for field in required_fields if field not in data]
+    if missing:
+        bot.send_message(chat_id, f"⚠️ Не хватает данных: {', '.join(missing)}. Пожалуйста, завершите создание игры.")
+        return
+
     date_obj = data["date"]
     weekday = date_obj.strftime("%A")
 
-    # Перевод дня недели
     weekday_ru = {
         "Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда",
         "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"
     }
 
-    # Перевод месяца
     months_ru = {
         "January": "января", "February": "февраля", "March": "марта",
         "April": "апреля", "May": "мая", "June": "июня",
@@ -169,15 +171,83 @@ def show_summary(bot, chat_id):
         f"👤 Резервных мест: {data['reserve']}\n\n"
         f"🕓 Обучение: {data['training']}\n"
         f"🕓 Время партии: {data['party']}\n\n"
-        f"{data['comment'] if data['comment'] else ''}"
+        f"{data.get('comment', '')}"
     )
 
     bot.send_message(chat_id, summary)
 
-    # Кнопки "Опубликовать" и "Отмена"
     markup = types.InlineKeyboardMarkup()
     publish_btn = types.InlineKeyboardButton("✅ Опубликовать", callback_data="publish_game")
     cancel_btn = types.InlineKeyboardButton("❌ Отмена", callback_data="cancel_game")
     markup.add(publish_btn, cancel_btn)
 
     bot.send_message(chat_id, "Выберите действие:", reply_markup=markup)
+
+
+def register_game_handlers(bot, send_welcome):
+    @bot.callback_query_handler(func=lambda call: call.data == "publish_game")
+    def handle_publish(call):
+        chat_id = call.message.chat.id
+        data = user_sessions.get(chat_id)
+
+        if not data:
+            bot.send_message(chat_id, "❌ Ошибка: данные не найдены.")
+            bot.answer_callback_query(call.id)
+            return
+
+        required_fields = ["game_name", "date", "time", "players", "reserve", "training", "party"]
+        missing = [field for field in required_fields if field not in data]
+
+        if missing:
+            bot.send_message(chat_id, f"❌ Невозможно опубликовать. Не хватает: {', '.join(missing)}.")
+            bot.answer_callback_query(call.id)
+            return
+
+        weekday_ru = {
+            "Monday": "Понедельник", "Tuesday": "Вторник", "Wednesday": "Среда",
+            "Thursday": "Четверг", "Friday": "Пятница", "Saturday": "Суббота", "Sunday": "Воскресенье"
+        }
+
+        weekday = data["date"].strftime("%A")
+
+        game_entry = {
+            "game_name": data["game_name"],
+            "date": data["date"].strftime("%d.%m.%Y"),
+            "weekday": weekday_ru.get(weekday, weekday),
+            "time": data["time"].strftime("%H:%M"),
+            "training": data["training"],
+            "party": data["party"],
+            "players": int(data["players"]),
+            "reserve": int(data["reserve"]),
+            "comment": data.get("comment", "")
+        }
+
+        try:
+            with open(GAMES_PATH, "r", encoding="utf-8") as f:
+                games = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            games = {}
+
+        games[data["game_name"]] = game_entry
+
+        with open(GAMES_PATH, "w", encoding="utf-8") as f:
+            json.dump(games, f, ensure_ascii=False, indent=4)
+
+        del user_sessions[chat_id]
+
+        bot.answer_callback_query(call.id, "✅ Игра опубликована!")
+        send_welcome(bot, call.message)
+
+    @bot.callback_query_handler(func=lambda call: call.data == "cancel_game")
+    def handle_cancel(call):
+        chat_id = call.message.chat.id
+        user_sessions.pop(chat_id, None)
+        bot.answer_callback_query(call.id, "❌ Создание игры отменено.")
+        send_welcome(bot, call.message)
+
+    @bot.callback_query_handler(func=lambda call: call.data == "skip_comment")
+    def handle_skip_comment(call):
+        chat_id = call.message.chat.id
+        user_sessions[chat_id]["comment"] = ""
+        bot.answer_callback_query(call.id)
+        show_summary(bot, chat_id)
