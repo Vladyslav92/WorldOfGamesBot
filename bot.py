@@ -4,6 +4,7 @@ from base.base import read_json_file
 from handlers.report_creator import create_report
 from handlers.game_creator import create_game, register_game_handlers
 from handlers.find_games import show_upcoming_games
+from modules.info_display import show_info
 
 
 with open("TOKEN.txt", "r") as f:
@@ -36,7 +37,7 @@ register_game_handlers(bot, send_welcome)
 
 @bot.message_handler(func=lambda message: message.text == "📃 Инфо")
 def info_button(message):
-    bot.send_message(message.chat.id, "<Тут будет информация>")
+    show_info(bot, message)
 
 
 @bot.message_handler(func=lambda message: message.text == "👤 Профиль")
