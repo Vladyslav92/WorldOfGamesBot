@@ -20,16 +20,5 @@
         "players": 2,
         "reserve": 0,
         "comment": ""
-    },
-    "Еще One Тест": {
-        "game_name": "Еще One Тест",
-        "date": "25.08.2025",
-        "weekday": "Среда",
-        "time": "10:00",
-        "training": "30м",
-        "party": "1ч 10м",
-        "players": 2,
-        "reserve": 0,
-        "comment": ""
     }
 }

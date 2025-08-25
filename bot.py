@@ -3,9 +3,9 @@ from telebot import types
 from base.base import read_json_file
 from handlers.report_creator import create_report
 from handlers.game_creator import create_game, register_game_handlers
+from handlers.game_editor import request_game_edit, register_edit_handlers, request_game_deletion
 from handlers.find_games import show_upcoming_games
 from modules.info_display import show_info
-
 
 with open("TOKEN.txt", "r") as f:
     TOKEN = f.read().strip()
@@ -33,6 +33,7 @@ def send_welcome(bot, message):
 
 
 register_game_handlers(bot, send_welcome)
+register_edit_handlers(bot, send_welcome)
 
 
 @bot.message_handler(func=lambda message: message.text == "📃 Инфо")
@@ -56,6 +57,25 @@ def profile_button(message):
 @bot.message_handler(func=lambda message: message.text == "📂 Предстоящие игры")
 def future_games_button(message):
     show_upcoming_games(bot, message)
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    EditButton = types.KeyboardButton("✏️ Изменить предстоящую игру")
+    DeleteButton = types.KeyboardButton("🗑 Удалить игру")
+    ReturnButton = types.KeyboardButton("📂 Вернуться в меню")
+    markup.add(EditButton, DeleteButton)
+    markup.add(ReturnButton)
+
+    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
+
+
+@bot.message_handler(func=lambda message: message.text == "🗑 Удалить игру")
+def delete_game_button(message):
+    request_game_deletion(bot, message, send_welcome)
+
+
+@bot.message_handler(func=lambda message: message.text == "✏️ Изменить предстоящую игру")
+def edit_game_button(message):
+    request_game_edit(bot, message, send_welcome)
 
 
 @bot.message_handler(func=lambda message: message.text == "📂 Создать игру")
@@ -86,11 +106,7 @@ def create_report_handler(message):
 @bot.message_handler(func=lambda message: message.text == "📂 Посмотреть отчеты")
 def show_reports(message):
     report = read_json_file("base/data.json")
-
-    # Telegram ограничивает длину сообщений до 4096 символов
     max_message_length = 4096
-
-    # Разбиваем отчет на части
     for i in range(0, len(report), max_message_length):
         bot.send_message(message.chat.id, report[i:i + max_message_length], parse_mode='MarkdownV2')
 
@@ -100,20 +116,15 @@ def my_games_button(message):
     bot.send_message(message.chat.id, "Пока вы не создавали никаких постов")
 
 
-# ЭТА ФУНКЦИЯ В БУДУЩЕМ БУДЕТ ПЕРЕПИСАНА И УСЛОЖНЕНА
 @bot.message_handler(func=lambda message: message.text == "👤 Друзья")
 def my_friends_button(message):
-    # Создаем разметку с кнопкой "Искать друзей"
     inline_markup = types.InlineKeyboardMarkup()
     FindFriendsButton = types.InlineKeyboardButton("🔎 Искать друзей", callback_data='find_friends')
     inline_markup.add(FindFriendsButton)
-    # Отправляем сообщение с кнопкой "Искать друзей"
     bot.send_message(message.chat.id, "👥 Вы пока не добавили друзей", reply_markup=inline_markup)
-    # Переход в главное меню
     send_welcome(bot, message)
 
 
-# ЭТА ФУНКЦИЯ В БУДУЩЕМ БУДЕТ ПЕРЕПИСАНА И УСЛОЖНЕНА
 @bot.callback_query_handler(func=lambda call: call.data == 'find_friends')
 def find_friends_operation(call):
     empty_markup = types.ReplyKeyboardRemove()
@@ -122,7 +133,6 @@ def find_friends_operation(call):
     CancelButton = types.InlineKeyboardButton("⏪ Вернуться", callback_data='cancel')
     markup.add(CancelButton)
     bot.send_message(call.message.chat.id, "🔎 Введите имя пользователя для поиска:", reply_markup=markup)
-    # Переход в главное меню
     send_welcome(bot, call.message)
 
 
@@ -131,11 +141,9 @@ def return_to_menu(message):
     send_welcome(bot, message)
 
 
-# Обработка нажатия кнопки "Отменить"
 @bot.callback_query_handler(func=lambda call: call.data == 'cancel')
 def cancel_operation(call):
     send_welcome(bot, call.message)
 
 
-# Запуск бота
 bot.polling(none_stop=True, interval=0)
