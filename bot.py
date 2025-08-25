@@ -109,6 +109,8 @@ def my_friends_button(message):
     inline_markup.add(FindFriendsButton)
     # Отправляем сообщение с кнопкой "Искать друзей"
     bot.send_message(message.chat.id, "👥 Вы пока не добавили друзей", reply_markup=inline_markup)
+    # Переход в главное меню
+    send_welcome(bot, message)
 
 
 # ЭТА ФУНКЦИЯ В БУДУЩЕМ БУДЕТ ПЕРЕПИСАНА И УСЛОЖНЕНА
@@ -120,6 +122,8 @@ def find_friends_operation(call):
     CancelButton = types.InlineKeyboardButton("⏪ Вернуться", callback_data='cancel')
     markup.add(CancelButton)
     bot.send_message(call.message.chat.id, "🔎 Введите имя пользователя для поиска:", reply_markup=markup)
+    # Переход в главное меню
+    send_welcome(bot, call.message)
 
 
 @bot.message_handler(func=lambda message: message.text == "📂 Вернуться в меню")
@@ -130,7 +134,7 @@ def return_to_menu(message):
 # Обработка нажатия кнопки "Отменить"
 @bot.callback_query_handler(func=lambda call: call.data == 'cancel')
 def cancel_operation(call):
-    send_welcome(call.message)
+    send_welcome(bot, call.message)
 
 
 # Запуск бота
