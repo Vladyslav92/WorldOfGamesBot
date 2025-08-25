@@ -3,6 +3,8 @@ from telebot import types
 from base.base import read_json_file
 from handlers.report_creator import create_report
 from handlers.game_creator import create_game, register_game_handlers
+from handlers.find_games import show_upcoming_games
+
 
 with open("TOKEN.txt", "r") as f:
     TOKEN = f.read().strip()
@@ -20,10 +22,10 @@ def start_command(message):
 def send_welcome(bot, message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     CreateGameButton = types.KeyboardButton("📂 Создать игру")
-    GamesOnWeekButton = types.KeyboardButton("📂 Игры на неделе")
+    FutureGamesButton = types.KeyboardButton("📂 Предстоящие игры")
     ProfileButton = types.KeyboardButton("👤 Профиль")
     InfoButton = types.KeyboardButton("📃 Инфо")
-    markup.add(CreateGameButton, GamesOnWeekButton)
+    markup.add(CreateGameButton, FutureGamesButton)
     markup.add(ProfileButton, InfoButton)
 
     bot.send_message(message.chat.id, "Главное меню:", reply_markup=markup)
@@ -50,9 +52,9 @@ def profile_button(message):
     bot.send_message(message.chat.id, "👤 Профиль:", reply_markup=markup)
 
 
-@bot.message_handler(func=lambda message: message.text == "📂 Игры на неделе")
-def games_onweek_button(message):
-    bot.send_message(message.chat.id, "📂 Пока нет доступных игр")
+@bot.message_handler(func=lambda message: message.text == "📂 Предстоящие игры")
+def future_games_button(message):
+    show_upcoming_games(bot, message)
 
 
 @bot.message_handler(func=lambda message: message.text == "📂 Создать игру")
